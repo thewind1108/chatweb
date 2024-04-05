@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Chat History</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+	<style type="text/css">
+		body {
+			background-color: #f4f7f6;
+			width: 100%;
+			height: 100%;
+			margin: 0;
+		}
+
+		.chat {
+			flex-grow: 1;
+			overflow-y: auto;
+			border-left: 1px solid #eaeaea;
+		}
+
+		.chat-app .chat .chat-header,
+		.chat-app .chat .chat-history {
+			border-bottom: 2px solid #f4f7f6;
+		}
+
+		.fixed-bottom-input {
+			position: fixed;
+			bottom: 0;
+			left: 280px;
+			/* Độ rộng của people-list */
+			width: calc(100% - 280px);
+			background-color: #fff;
+			z-index: 999;
+			padding: 10px;
+			border-top: 1px solid #eaeaea;
+			display: flex;
+			align-items: center;
+		}
+
+		.fixed-bottom-input .input-group {
+			width: 100%;
+		}
+
+		.hidden {
+			display: none;
+		}
+
+		.chat-history {
+			flex-grow: 1;
+			overflow-y: auto;
+			padding: 10px;
+			height: calc(100vh - 120px);
+			/* Thêm chiều cao để cuộn tự động */
+		}
+
+		.chat-message {
+			margin-bottom: 20px;
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			overflow-y: auto;
+		}
+
+		.chat-message::-webkit-scrollbar {
+			width: 0;
+		}
+
+		.chat-message.mine {
+			align-items: flex-end;
+		}
+
+		.chat-message .sender {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.chat-message .content {
+			background-color: white;
+			padding: 10px;
+			border-radius: 10px;
+			max-width: 70%;
+		}
+
+		.chat-message.mine .content {
+			background-color: #007bff;
+			color: #fff;
+		}
+
+		.emoji {
+			margin-bottom: 165px;
+			margin-right: 500px;
+			height: 0px;
+			background-color: #fff;
+			width: 400px;
+			z-index: 999;
+			overflow-y: scroll;
+			cursor: pointer;
+			border-radius: 5px;
+			transition: 0.5s height;
+			position: absolute;
+			bottom: -100px;
+		}
+
+		.emoji::-webkit-scrollbar {
+			width: 0;
+		}
+
+		.emoji span {
+			margin-left: 9.8px;
+			font-size: 26px;
+		}
+
+		.imageChoose {
+			position: relative;
+			margin-top: 10px;
+			margin-left: 3.5px;
+			background-color: #fff;
+			width: 950px;
+			z-index: 999;
+			overflow-y: scroll;
+			cursor: pointer;
+			border-radius: 5px;
+			transition: 0.5s height;
+			height: 0;
+			/* Bắt đầu với chiều cao là 0 */
+		}
+
+		.imageChoose::-webkit-scrollbar {
+			width: 0;
+		}
+
+		.fileChoose {
+			position: relative;
+			margin-top: 10px;
+			margin-left: 3.5px;
+			background-color: #fff;
+			width: 950px;
+			z-index: 999;
+			overflow-y: scroll;
+			cursor: pointer;
+			border-radius: 5px;
+			transition: 0.5s height;
+			height: 0;
+			/* Bắt đầu với chiều cao là 0 */
+		}
+
+		.fileChoose::-webkit-scrollbar {
+			width: 0;
+		}
+
+		.rounded-square {
+			border-radius: 5px;
+			/* Điều chỉnh giá trị để tạo hình vuông */
+			width: 100px;
+			/* Điều chỉnh kích thước chiều rộng */
+			height: 100px;
+			/* Điều chỉnh kích thước chiều cao */
+			object-fit: cover;
+			/* Đảm bảo hình ảnh sẽ không bị căn chỉnh */
+			margin-bottom: 20px;
+			border: 2px solid #000;
+		}
+
+		.image-container {
+			position: relative;
+			display: inline-block;
+		}
+
+		.file-container {
+			position: relative;
+			display: inline-block;
+		}
+
+		.delete-btn {
+			position: absolute;
+			top: 0;
+			right: 0;
+			background-color: transparent;
+			border: none;
+			color: red;
+			font-weight: bold;
+			cursor: pointer;
+		}
+
+		.message-image {
+			max-width: 400px;
+			/* Điều chỉnh kích thước chiều rộng tối đa của hình ảnh */
+			max-height: 400px;
+			/* Điều chỉnh kích thước chiều cao tối đa của hình ảnh */
+		}
+	</style>
+</head>
+
+<body>
+	<div class="chat">
+		<div class="chat-header">
+			<div class="py-2 px-4 border-bottom d-none d-lg-flex">
+				<div class="d-flex align-items-center py-1">
+					<!-- Avatar -->
+					<div class="position-relative">
+						<img class="rounded-circle mr-1" th:src="@{'images/' + ${chatFriendUser.avatar}}" width="40"
+							height="40">
+					</div>
+					<!-- Thông tin người dùng -->
+					<div class="flex-grow-1 pl-3" style="display: flex; flex-direction: column;">
+						<strong id="friend" th:text="${chatFriendUser.fullName}"></strong>
+						<input type="hidden" name="chatFriendUser" th:value="${chatFriendUser.phoneNumber}">
+						<input type="hidden" name="loggedInUserPhoneNumber" th:value="${loggedInUser.phoneNumber}">
+						<input type="hidden" name="timestamp">
+
+						<div class="text-muted small">
+							<em class="fas fa-circle"
+								th:class="${chatFriendUser.online} ? 'chat-online' : 'chat-offline'"></em>
+							<em th:text="${chatFriendUser.online} ? 'Online' : 'Offline'"></em>
+						</div>
+
+					</div>
+					<!-- Nút điện thoại -->
+					<div class="Button" style="margin-left: 710px;">
+						<button class="btn btn-primary btn-lg mr-1 px-3"><svg xmlns="http://www.w3.org/2000/svg"
+								width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+								stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+								class="feather feather-phone feather-lg">
+								<path
+									d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+								</path>
+							</svg></button>
+						<!-- Nút video -->
+						<button class="btn btn-info btn-lg mr-1 px-3 d-none d-md-inline-block"><svg
+								xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+								fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+								stroke-linejoin="round" class="feather feather-video feather-lg">
+								<polygon points="23 7 16 12 23 17 23 7"></polygon>
+								<rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+							</svg></button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	<div class="chat-history" id="message-container">
+		<!-- Lịch sử tin nhắn sẽ được hiển thị ở đây -->
+	</div>
+
+
+	<div class="fixed-bottom-input" style="flex-direction: column;">
+		<div class="emoji">
+			<span id="emoji1" onclick="emoji(this.id)">&#128512</span>
+			<span id="emoji2" onclick="emoji(this.id)">&#128513</span>
+			<span id="emoji3" onclick="emoji(this.id)">&#128514</span>
+			<span id="emoji4" onclick="emoji(this.id)">&#128515</span>
+			<span id="emoji5" onclick="emoji(this.id)">&#128516</span>
+			<span id="emoji6" onclick="emoji(this.id)">&#128517</span>
+			<span id="emoji7" onclick="emoji(this.id)">&#128518</span>
+			<span id="emoji8" onclick="emoji(this.id)">&#128519</span>
+			<span id="emoji9" onclick="emoji(this.id)">&#128520</span>
+			<span id="emoji10" onclick="emoji(this.id)">&#128521</span>
+			<span id="emoji11" onclick="emoji(this.id)">&#128522</span>
+			<span id="emoji12" onclick="emoji(this.id)">&#128523</span>
+			<span id="emoji13" onclick="emoji(this.id)">&#128524</span>
+			<span id="emoji14" onclick="emoji(this.id)">&#128525</span>
+			<span id="emoji15" onclick="emoji(this.id)">&#128526</span>
+			<span id="emoji16" onclick="emoji(this.id)">&#128527</span>
+			<span id="emoji17" onclick="emoji(this.id)">&#128528</span>
+			<span id="emoji18" onclick="emoji(this.id)">&#128529</span>
+			<span id="emoji19" onclick="emoji(this.id)">&#128530</span>
+			<span id="emoji20" onclick="emoji(this.id)">&#128531</span>
+			<span id="emoji21" onclick="emoji(this.id)">&#128532</span>
+			<span id="emoji22" onclick="emoji(this.id)">&#128533</span>
+			<span id="emoji23" onclick="emoji(this.id)">&#128534</span>
+			<span id="emoji24" onclick="emoji(this.id)">&#128535</span>
+			<span id="emoji25" onclick="emoji(this.id)">&#128536</span>
+			<span id="emoji26" onclick="emoji(this.id)">&#128537</span>
+			<span id="emoji27" onclick="emoji(this.id)">&#128538</span>
+			<span id="emoji28" onclick="emoji(this.id)">&#128539</span>
+			<span id="emoji29" onclick="emoji(this.id)">&#128540</span>
+			<span id="emoji30" onclick="emoji(this.id)">&#128541</span>
+			<span id="emoji31" onclick="emoji(this.id)">&#128542</span>
+			<span id="emoji32" onclick="emoji(this.id)">&#128543</span>
+		</div>
+
+		<div class="imageChoose">
+			<div class="image-container">
+				<img id="thumbnail" class="rounded-square" alt="Logo Preview">
+				<button class="delete-btn" onclick="deleteImage()">X</button>
+			</div>
+		</div>
+
+		<div class="fileChoose" style="flex-direction: column;">
+			<div class="file-container">
+				<img id="thumbnailFile" class="rounded-square" alt="File Preview" th:src="@{images/document.jpg}">
+				<button class="delete-btn" onclick="deleteFile()">X</button>
+			</div>
+
+			<div style="margin-top: -20px;">
+				<span id="fileChosenName"></span>
+			</div>
+
+		</div>
+
+		<div class="input-group">
+			<div class="input-group-prepend">
+				<div class="input-group-prepend">
+					<input type="file" id="fileInput" name="fileInput" style="display: none;" />
+					<button class="btn btn-light" type="button" onclick="document.getElementById('fileInput').click();">
+						<i class="material-icons">insert_drive_file</i>
+					</button>
+
+					<input type="file" name="fileImage" id="fileImage" style="display: none;"
+						accept="image/png, image/jpg, image/jpeg" />
+					<button class="btn btn-light" type="button" onclick="document.getElementById('fileImage').click();">
+						<i class="material-icons">insert_photo</i>
+					</button>
+
+					<button class="btn btn-light" type="button">
+						<i class="material-icons" onclick="show_emoji()">sentiment_satisfied_alt</i>
+					</button>
+
+
+				</div>
+			</div>
+			<input type="text" id="input-field" class="form-control mx-2" placeholder="Type your message">
+			<div class="input-group-append">
+				<button class="btn btn-primary" type="button">Send</button>
+			</div>
+		</div>
+	</div>
+	<script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.1/dist/sockjs.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+
+
+	<!-- Trong JavaScript -->
+	<script type="text/javascript">
+
+		///Canh chinh de luot len xuong
+		$(window).on('resize', function () {
+			var chatHistoryHeight = $(window).height() - $('.chat-header').outerHeight() - $('.fixed-bottom-input').outerHeight();
+			$('.chat-history').css('height', chatHistoryHeight + 'px');
+		});
+		/////
+		$(document).ready(function () {
+			// Gọi hàm connect() khi trang đã tải hoàn toàn
+			connect();
+
+			// Gọi hàm truy xuất lịch sử tin nhắn khi trang được tải hoàn toàn
+			$(document).ready(function () {
+				var senderId = $("input[name='loggedInUserPhoneNumber']").val();
+				var receiverId = $("input[name='chatFriendUser']").val();
+				fetchMessageHistory(senderId, receiverId);
+
+			});
+
+
+			// Bắt sự kiện khi nút "Send" được nhấn
+			$(".btn-primary").click(function () {
+				// Kiểm tra xem stompClient đã được định nghĩa chưa
+				if (typeof stompClient !== "undefined") {
+					// Thực hiện các hành động cần thiết với stompClient ở đây
+				} else {
+					console.error("stompClient is not defined. Please make sure to call connect() first.");
+				}
+			});
+
+			// Lắng nghe sự kiện khi nút "Send" được nhấn
+			$(".fixed-bottom-input .btn-primary").click(function () {
+				// Lấy nội dung tin nhắn từ ô input
+				var messageContent = $("#input-field").val().trim();
+
+				var loggedInUserPhoneNumber = $("input[name='loggedInUserPhoneNumber']").val();
+				var chatFriendUserPhoneNumber = $("input[name='chatFriendUser']").val();
+
+				if (messageContent !== "") {
+					var timestamp = new Date().toISOString(); // Lấy thời gian hiện tại và chuyển đổi sang định dạng ISO
+					$("input[name='timestamp']").val(timestamp); // Cập nhật giá trị của hidden input
+
+					// Tạo đối tượng tin nhắn để gửi lên server
+					var chatMessage = {
+						senderId: loggedInUserPhoneNumber,
+						receiverId: chatFriendUserPhoneNumber,
+						content: messageContent,
+						timestamp: timestamp // Thêm timestamp vào tin nhắn
+					};
+
+					// Gửi tin nhắn lên server thông qua WebSocket
+					stompClient.send("/app/chat", {}, JSON.stringify(chatMessage));
+					console.log("Tin nhắn đã được gửi:", chatMessage);
+
+					// Hiển thị tin nhắn ngay sau khi gửi
+					showMessage(chatMessage);
+
+					// Xóa nội dung tin nhắn khỏi ô input sau khi gửi
+					$(".fixed-bottom-input input").val("");
+				}
+
+				// Gửi hình ảnh nếu có
+				var formData = new FormData();
+				var imageFile = $("#fileImage")[0].files[0];
+				if (imageFile) {
+					//luu hinh anh vao database
+					formData.append("fileImage", imageFile);
+					// Gửi hình ảnh lên server thông qua AJAX
+					$.ajax({
+						url: "/imagesSend/save", // Địa chỉ URL của endpoint để lưu hình ảnh
+						type: "POST",
+						data: formData,
+						contentType: false,
+						processData: false,
+						success: function (response) {
+							//Gui tin nhan hinh anh
+							messageContent = "Image: " + imageFile.name;
+							var timestamp = new Date().toISOString(); // Lấy thời gian hiện tại và chuyển đổi sang định dạng ISO
+							$("input[name='timestamp']").val(timestamp); // Cập nhật giá trị của hidden input
+
+							// Tạo đối tượng tin nhắn để gửi lên server
+							var chatMessage = {
+								senderId: loggedInUserPhoneNumber,
+								receiverId: chatFriendUserPhoneNumber,
+								content: messageContent,
+								timestamp: timestamp // Thêm timestamp vào tin nhắn
+							};
+
+							// Gửi tin nhắn lên server thông qua WebSocket
+							stompClient.send("/app/chat", {}, JSON.stringify(chatMessage));
+							console.log("Tin nhắn đã được gửi:", chatMessage);
+
+							// Hiển thị tin nhắn ngay sau khi gửi
+							showMessage(chatMessage);
+							$("#fileImage").val('');
+							// Xóa hình ảnh hiện tại bằng cách đặt giá trị của src là rỗng
+							$('#thumbnail').attr('src', '');
+							// Đặt chiều cao của imageChoose về 0 để ẩn hình ảnh và nút xóa
+							$(".imageChoose").css("height", "0");
+						},
+						error: function (error) {
+							console.error("Error sending image:", error);
+						}
+					});
+				}
+
+				// Gửi file nếu có
+				var formDataFile = new FormData();
+				var fileInput = $("#fileInput")[0].files[0];
+				if (fileInput) {
+					formDataFile.append("document", fileInput);
+					// Gửi file lên server thông qua AJAX
+					$.ajax({
+						url: "/fileSend/save", // Địa chỉ URL của endpoint để lưu file
+						type: "POST",
+						data: formDataFile,
+						contentType: false,
+						processData: false,
+						success: function (response) {
+							var fileId = response.fileId;
+							messageContent = "File: " + fileId + "/" + fileInput.name;
+							var timestamp = new Date().toISOString(); // Lấy thời gian hiện tại và chuyển đổi sang định dạng ISO
+							$("input[name='timestamp']").val(timestamp); // Cập nhật giá trị của hidden input
+
+							// Tạo đối tượng tin nhắn để gửi lên server
+							var chatMessage = {
+								senderId: loggedInUserPhoneNumber,
+								receiverId: chatFriendUserPhoneNumber,
+								content: messageContent,
+								timestamp: timestamp // Thêm timestamp vào tin nhắn
+							};
+
+							// Gửi tin nhắn lên server thông qua WebSocket
+							stompClient.send("/app/chat", {}, JSON.stringify(chatMessage));
+							console.log("Tin nhắn đã được gửi:", chatMessage);
+							var fileId = response.fileId; // Lấy fileId từ response
+							console.log("File đã được lưu với ID:", fileId);
+
+							// Hiển thị tin nhắn ngay sau khi gửi
+							showMessage(chatMessage);
+							// Thực hiện các hành động cần thiết sau khi gửi file thành công
+							$("#fileInput").val('');
+
+							// Đặt chiều cao của imageChoose về 0 để ẩn hình ảnh và nút xóa
+							$(".fileChoose").css("height", "0");
+						},
+						error: function (error) {
+							console.error("Lỗi khi gửi và lưu file:", error);
+							// Thực hiện các hành động cần thiết khi gửi file gặp lỗi
+						}
+					});
+				}
+
+
+			});
+
+
+			////Image
+			$("#fileImage").change(function () {
+
+				// Hiển thị khu vực imageChoose
+				$(".imageChoose").css("height", "auto");
+
+				// Hiển thị hình ảnh được chọn
+				showImageThumbnail(this);
+			});
+			////Image
+			$("#fileInput").change(function () {
+
+				// Hiển thị khu vực imageChoose
+				$(".fileChoose").css("height", "auto");
+
+				// Lấy tên của file từ đối tượng input
+				var fileName = $(this).val().split('\\').pop(); // Lấy phần cuối cùng của đường dẫn là tên file
+
+				// Hiển thị tên file
+				$("#fileChosenName").text(fileName);
+
+			});
+
+
+		});
+
+		//Ham connect socket
+		function connect() {
+			var socket = new SockJS('/ws');
+			stompClient = Stomp.over(socket);
+
+			// Sự kiện khi kết nối WebSocket được mở thành công
+			stompClient.connect({}, function (frame) {
+				console.log('Connected:');
+				console.log(frame); // Hiển thị thông tin frame
+				console.log('WebSocket connection opened successfully.');
+
+
+
+				var receiverId = $("input[name='loggedInUserPhoneNumber']").val();
+
+				stompClient.subscribe('/user/' + receiverId + '/queue/messages', function (message) {
+					// Hiển thị tin nhắn mới trong message-container
+					showMessage(JSON.parse(message.body));
+				});
+
+			}, function (error) {
+				// Sự kiện khi có lỗi xảy ra khi kết nối WebSocket
+				console.error('WebSocket error: ' + error);
+			});
+		}
+
+
+		// Hàm được gọi khi kết nối WebSocket được mở thành công
+		function onConnected() {
+			console.log('WebSocket connection opened successfully.');
+
+			// Thực hiện các hành động cần thiết khi kết nối được mở
+		}
+
+		// Hàm được gọi khi kết nối WebSocket bị đóng
+		function onDisconnected() {
+			console.log('WebSocket connection closed.');
+
+			// Thực hiện các hành động cần thiết khi kết nối bị đóng
+		}
+
+
+		// Hien thi showMessages
+		var displayedMessages = [];
+		function showMessage(message) {
+			// Kiểm tra xem tin nhắn có tồn tại trong mảng displayedMessages hay không
+			if (displayedMessages.includes(message.timestamp)) {
+				// Nếu đã tồn tại, bỏ qua việc hiển thị tin nhắn
+				return;
+			}
+
+			// Nếu chưa tồn tại, thêm timestamp vào mảng displayedMessages và hiển thị tin nhắn
+			displayedMessages.push(message.timestamp);
+			appendNewMessageToUI(message);
+		}
+
+		// hien thi hinh anh duoc chon
+		function showImageThumbnail(fileInput) {
+			file = fileInput.files[0];
+			reader = new FileReader();
+
+			reader.onload = function (e) {
+				$('#thumbnail').attr('src', e.target.result);
+			};
+
+			reader.readAsDataURL(file);
+		}
+
+		// xoa hinh anh di o thumbail
+		function deleteImage() {
+			$("#fileImage").val('');
+			// Xóa hình ảnh hiện tại bằng cách đặt giá trị của src là rỗng
+			$('#thumbnail').attr('src', '');
+			// Đặt chiều cao của imageChoose về 0 để ẩn hình ảnh và nút xóa
+			$(".imageChoose").css("height", "0");
+		}
+
+		// xoa hinh anh di o thumbail
+		function deleteFile() {
+			$("#fileInput").val('');
+
+			// Đặt chiều cao của imageChoose về 0 để ẩn hình ảnh và nút xóa
+			$(".fileChoose").css("height", "0");
+		}
+
+
+		// Hàm để truy xuất lịch sử tin nhắn từ máy chủ
+		function fetchMessageHistory(senderId, receiverId) {
+			$.get("/messages/" + senderId + "/" + receiverId, function (data) {
+				data.forEach(function (message) {
+					// Hiển thị tin nhắn trong message-container
+					appendNewMessageToUI(message);
+				});
+			});
+		}
+
+		// Cach hien thi tin nhan moi
+		function appendNewMessageToUI(message) {
+			var chatContainer = $("#message-container");
+			var messageClass = message.senderId === $("input[name='loggedInUserPhoneNumber']").val() ? "mine" : "other";
+
+			// Kiểm tra nếu tin nhắn chứa hình ảnh
+			if (message.content.startsWith("Image: ")) {
+				var imageSrc = message.content.substring(7); // Lấy đường dẫn của hình ảnh từ tin nhắn
+				var messageDiv = '<div class="chat-message ' + messageClass + '">' +
+					'<div class="content">' +
+					'<img src="./images-send/' + imageSrc + '"class="message-image">' +
+					'</div>' +
+					'</div>';
+			} else if (message.content.startsWith("File: ")) {
+				// Nếu tin nhắn bắt đầu từ "File:", tạo một thẻ <a> chứa nội dung của tin nhắn
+				var fileMessage = message.content.substring(6); // Lấy tên file từ tin nhắn
+
+				var fileId = fileMessage.split("/")[0]; // Lấy phần fileId
+				var fileName = fileMessage.split("/")[1]; // Lấy phần fileName
+
+				// Tạo URL tải xuống với fileId
+				var downloadUrl = "/download?id=" + fileId;
+
+
+
+				// Xác định màu sắc của tin nhắn dựa trên loại là của bạn (mine) hay của người khác (other)
+				var messageColorClass = messageClass === "mine" ? "text-white" : "text-dark";
+
+				var fileLink = '<a href="'+ downloadUrl +'" class="' + messageColorClass + '">' + fileName + '</a>';
+
+				var messageDiv = '<div class="chat-message ' + messageClass + '">' +
+					'<div class="content">' + fileLink + '</div>' +
+					'</div>';
+			} else {
+				// Tin nhắn không chứa hình ảnh
+				var messageDiv = '<div class="chat-message ' + messageClass + '">' +
+					'<div class="content">' + message.content + '</div>' +
+					'</div>';
+			}
+
+			chatContainer.append(messageDiv);
+			chatContainer.scrollTop(chatContainer[0].scrollHeight);
+		}
+
+
+		////emoji
+		click = false
+		function show_emoji() {
+			if (click == false) {
+				document.getElementsByClassName("emoji")[0].style.height = "142px";
+				document.getElementsByClassName("emoji")[0].style.height = "8px 0px";
+				click = true;
+			} else {
+				document.getElementsByClassName("emoji")[0].style.height = "0px";
+				document.getElementsByClassName("emoji")[0].style.height = "0px";
+				click = false;
+			}
+		}
+		function emoji(emoji) {
+			document.getElementById("input-field").value += document.getElementById(emoji).innerHTML;
+		}
+
+
+	</script>
+
+</body>
+
+</html>

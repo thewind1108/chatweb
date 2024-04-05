@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Search Results</title>
+</head>
+
+<body>
+	<div th:each="user : ${foundUsers}">
+		<a href="#" class="list-group-item list-group-item-action border-0">
+			<div class="d-flex align-items-start">
+				<img th:src="@{'images/' + ${user.avatar}}" class="rounded-circle mr-1" width="40" height="40">
+				<div class="flex-grow-1 ml-3">
+					<p th:text="${user.fullName}"></p>
+					<div class="small">
+						<span class="fas fa-circle" th:class="${user.online} ? 'chat-online' : 'chat-offline'"></span>
+						<span th:text="${user.online} ? 'Online' : 'Offline'"></span>
+					</div>
+				</div>
+				<div>
+					<!-- Hiển thị nút "Add" hoặc thông báo "Đã gửi" tùy thuộc vào trạng thái bạn bè -->
+					<button th:if="${user.friendStatus == 'Add'}" class="badge bg-success float-right btn-add-friend"
+						th:id="'btn-add-friend-' + ${user.phoneNumber}"
+						th:data-receiver="${user.phoneNumber}">Add</button>
+					<span th:if="${user.friendStatus == 'Đã gửi'}"
+						class="badge bg-secondary float-right btn-friend-sent">Đã gửi</span>
+				</div>
+			</div>
+		</a>
+	</div>
+
+
+	<script type="text/javascript">
+		$(document).ready(function () {
+			$('.btn-add-friend').click(function () {
+				var receiverPhoneNumber = $(this).data('receiver');
+				$.ajax({
+					type: 'POST',
+					url: '/addFriend',
+					data: {receiverPhoneNumber: receiverPhoneNumber},
+					success: function () {
+						$('#btn-add-friend-' + receiverPhoneNumber).hide();
+						$('#btn-friend-sent-' + receiverPhoneNumber).show();
+						alert('Friend request sent!');
+
+					},
+					error: function () {
+						alert('Error sending friend request!');
+					}
+				});
+			});
+		});
+	</script>
+
+</body>
+
+
+
+</html>
